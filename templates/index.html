@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>Sahabat Syariah — Analisis Saham</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f5f7f8;--card:#fff;--text:#15202b;--muted:#66727d;--line:#e6eaed;--accent:#0f766e;--accent2:#115e59;--soft:#e7f5f2;--warn:#fff7df}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text)}
+.container{max-width:1100px;margin:auto;padding:18px}.hero{background:linear-gradient(135deg,#0f766e,#134e4a);color:white;border-radius:24px;padding:24px;margin-bottom:16px;box-shadow:0 12px 30px #0f766e20}.hero h1{margin:0 0 6px;font-size:28px}.hero p{margin:0;opacity:.9}
+.search{display:flex;gap:8px;margin-top:20px}.search input{flex:1;min-width:0;border:0;border-radius:14px;padding:15px;font-size:17px}.search button{border:0;border-radius:14px;padding:0 20px;font-weight:700;background:white;color:var(--accent);font-size:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 5px 18px #102a4308}.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.symbol{font-size:28px;font-weight:800}.name{color:var(--muted);margin-top:3px}.price{font-size:30px;font-weight:800;text-align:right}.up{color:#15803d}.down{color:#b91c1c}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric{background:#f8fafb;border:1px solid var(--line);padding:13px;border-radius:14px}.metric b{display:block;font-size:18px;margin-top:4px}.label{font-size:12px;color:var(--muted)}.section{font-size:18px;font-weight:800;margin:4px 0 12px}.pill{display:inline-block;padding:6px 10px;border-radius:999px;background:var(--soft);color:var(--accent2);font-size:12px;font-weight:700}.warn{background:var(--warn);border-color:#f1df9c}.small{font-size:12px;color:var(--muted);line-height:1.55}.notes{margin:0;padding-left:18px}.loading{text-align:center;padding:30px;color:var(--muted)}canvas{max-height:360px}.footer{color:var(--muted);font-size:12px;text-align:center;padding:10px 0 24px}
+@media(max-width:720px){.container{padding:12px}.hero{padding:18px;border-radius:20px}.hero h1{font-size:23px}.search{flex-direction:column}.search button{height:48px}.grid{grid-template-columns:repeat(2,1fr)}.top{flex-direction:column}.price{text-align:left}.metric b{font-size:16px}}
+</style>
+</head>
+<body>
+<div class="container">
+<section class="hero">
+<h1>🌿 Sahabat Syariah</h1>
+<p>Analisis saham Indonesia berbasis kode emiten — fundamental, valuasi, grafik, dan catatan syariah.</p>
+<div class="search"><input id="symbol" placeholder="Masukkan kode emiten, contoh: BBCA" autocomplete="off" autocapitalize="characters"><button onclick="loadStock()">Analisis</button></div>
+</section>
+<div id="app"><div class="card loading">Masukkan kode emiten untuk memulai.</div></div>
+<div class="footer">Data pasar: Yahoo Finance melalui yfinance. Bukan data real-time resmi BEI. Status syariah resmi mengacu pada DES OJK.</div>
+</div>
+<script>
+let chart;
+const rupiah=n=>n==null?'—':'Rp '+new Intl.NumberFormat('id-ID',{maximumFractionDigits:0}).format(n);
+const num=n=>n==null?'—':new Intl.NumberFormat('id-ID',{maximumFractionDigits:2}).format(n);
+const pct=n=>n==null?'—':num(n)+'%';
+const big=n=>{if(n==null)return '—';let a=Math.abs(n),s=a>=1e12?'T':a>=1e9?'M':a>=1e6?'Jt':'';let d=s==='T'?1:s==='M'?1:s==='Jt'?1:0;let v=s==='T'?n/1e12:s==='M'?n/1e9:s==='Jt'?n/1e6:n;return num(v)+' '+s};
+function metric(label,value){return `<div class="metric"><div class="label">${label}</div><b>${value}</b></div>`}
+async function loadStock(){
+ const s=document.getElementById('symbol').value.trim().toUpperCase(); if(!s)return;
+ document.getElementById('app').innerHTML='<div class="card loading">Mengambil data '+s+'…</div>';
+ try{const r=await fetch('/api/stock?symbol='+encodeURIComponent(s));const d=await r.json();if(!r.ok)throw new Error(d.error||'Gagal');render(d)}catch(e){document.getElementById('app').innerHTML='<div class="card warn"><b>Data belum tersedia</b><p>'+e.message+'</p><div class="small">Pastikan kode emiten benar, misalnya BBCA, BBRI, BMRI, TLKM, ANTM, BRIS.</div></div>'}
+}
+function render(d){
+ const cls=(d.change_pct??0)>=0?'up':'down';
+ document.getElementById('app').innerHTML=`
+ <div class="card"><div class="top"><div><div class="symbol">${d.symbol}</div><div class="name">${d.name||'—'}</div><div class="pill">${d.sector||'Sektor tidak tersedia'}</div></div><div><div class="price">${rupiah(d.price)}</div><div class="${cls}">${d.change==null?'—':(d.change>=0?'+':'')+rupiah(d.change)} (${d.change_pct==null?'—':(d.change_pct>=0?'+':'')+num(d.change_pct)}%)</div></div></div></div>
+ <div class="card"><div class="section">📊 Ringkasan Fundamental</div><div class="grid">${metric('PER',num(d.pe)+'x')}${metric('PBV',num(d.pbv)+'x')}${metric('EPS',rupiah(d.eps))}${metric('BVPS',rupiah(d.bvps))}${metric('ROE',pct(d.roe))}${metric('ROA',pct(d.roa))}${metric('Net Profit Margin',pct(d.npm))}${metric('Dividend Yield',pct(d.dividend_yield))}</div></div>
+ <div class="card"><div class="section">💰 Kinerja Keuangan</div><div class="grid">${metric('Pendapatan',big(d.revenue))}${metric('Laba Bersih',big(d.net_income))}${metric('Pertumbuhan Pendapatan',pct(d.revenue_growth))}${metric('Pertumbuhan Laba',pct(d.net_income_growth))}${metric('Total Aset',big(d.assets))}${metric('Ekuitas',big(d.equity))}${metric('Utang',big(d.debt))}${metric('Utang/Aset',pct(d.debt_assets))}${metric('Arus Kas Operasi',big(d.operating_cash_flow))}${metric('Free Cash Flow',big(d.free_cash_flow))}</div></div>
+ <div class="card"><div class="section">📈 Grafik Harga 1 Tahun</div><canvas id="chart"></canvas></div>
+ <div class="card warn"><div class="section">☪️ Catatan Syariah</div><ul class="notes">${(d.sharia_notes||[]).map(x=>'<li>'+x+'</li>').join('')}</ul><p class="small">OJK menetapkan DES secara berkala; DES periode I 2026 berlaku efektif 1 Juni 2026. Untuk status resmi suatu emiten, cek DES OJK terbaru.</p><a href="https://ojk.go.id/id/kanal/syariah/data-dan-statistik/daftar-efek-syariah/default.aspx" target="_blank" rel="noopener">Buka Daftar Efek Syariah OJK →</a></div>
+ <div class="card"><div class="section">ℹ️ Sumber & waktu data</div><div class="small">${d.source}<br>Diperbarui: ${new Date(d.retrieved_at).toLocaleString('id-ID')}</div></div>`;
+ const ctx=document.getElementById('chart');if(chart)chart.destroy();chart=new Chart(ctx,{type:'line',data:{labels:d.chart.map(x=>x.date),datasets:[{label:d.symbol, data:d.chart.map(x=>x.close),tension:.2,pointRadius:0,borderWidth:2}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{maxTicksLimit:6}},y:{ticks:{callback:v=>'Rp '+new Intl.NumberFormat('id-ID').format(v)}}}}});
+}
+document.getElementById('symbol').addEventListener('keydown',e=>{if(e.key==='Enter')loadStock()});
+</script>
+</body></html>
